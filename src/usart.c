@@ -11,7 +11,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
-#define RBUF_SIZE 256
+#define RBUF_SIZE 128
 #define TBUF_SIZE 256
 
 /* Private typedef -----------------------------------------------------------*/
@@ -20,7 +20,7 @@
 /* Private variables ---------------------------------------------------------*/
 RX_Buffer recvBuffer;
 uint8_t statusRx;
-
+uint8_t DMA_RX_Buffer[RBUF_SIZE];
 /* Private function prototypes -----------------------------------------------*/
 void USART1_LowLevel_Init();
 void USART2_LowLevel_Init();
@@ -46,29 +46,29 @@ void USART1_LowLevel_Init()
 	GPIO_InitStructTX.GPIO_Pin 							= (USART1_TX_PIN);
 	GPIO_InitStructTX.GPIO_Mode	 						= GPIO_Mode_AF;
 	GPIO_InitStructTX.GPIO_OType 						= GPIO_OType_OD;
-	GPIO_InitStructTX.GPIO_PuPd 						= GPIO_PuPd_UP;
-	GPIO_InitStructTX.GPIO_Speed 						= GPIO_Speed_50MHz;
+	GPIO_InitStructTX.GPIO_PuPd 						= GPIO_PuPd_NOPULL;
+	GPIO_InitStructTX.GPIO_Speed 						= GPIO_Speed_Level_1;
 	GPIO_Init(USART1_GPIO_PORT,&GPIO_InitStructTX);
 
 
 	//Setting USART1 RX Pin individually as Push-Pull and no Pull-Up/Down
 	GPIO_InitTypeDef GPIO_InitStructRX;
 
-
+/*
 	GPIO_InitStructRX.GPIO_Pin 							= (USART1_RX_PIN);
 	GPIO_InitStructRX.GPIO_Mode	 						= GPIO_Mode_AF;
 	GPIO_InitStructRX.GPIO_OType 						= GPIO_OType_PP;
 	GPIO_InitStructRX.GPIO_PuPd 						= GPIO_PuPd_NOPULL;
-	GPIO_InitStructRX.GPIO_Speed 						= GPIO_Speed_50MHz;
+	GPIO_InitStructRX.GPIO_Speed 						= GPIO_Speed_Level_2;
 	GPIO_Init(USART1_GPIO_PORT,&GPIO_InitStructRX);
 
-
+*/
 	/* The RX and TX pins are now connected to their AF
 	 * so that the USART1 can take over control of the
 	 * pins
 	 */
 	GPIO_PinAFConfig(USART1_GPIO_PORT,USART1_TX_SOURCE,USART1_AF);
-	GPIO_PinAFConfig(USART1_GPIO_PORT,USART1_RX_SOURCE,USART1_AF);
+//	GPIO_PinAFConfig(USART1_GPIO_PORT,USART1_RX_SOURCE,USART1_AF);
 }
 
 
@@ -116,7 +116,36 @@ void USART1_Init(uint32_t baudrate)
 	USART_InitStruct.USART_Mode 					= (USART_Mode_Tx | USART_Mode_Rx);
 	USART_InitStruct.USART_HardwareFlowControl 		= USART_HardwareFlowControl_None;
 	USART_Init(USART1,&USART_InitStruct);
+	USART_OverSampling8Cmd(USART1, DISABLE);
+	USART_HalfDuplexCmd(USART1, ENABLE);
 
+	/*USART_DMACmd(USART1, USART_DMAReq_Rx, ENABLE);
+
+
+	DMA_InitTypeDef DMA_InitStructure;
+	DMA_StructInit(DMA_InitStructure);
+
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+
+
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&USART1->RDR;
+    DMA_InitStructure.DMA_BufferSize = RBUF_SIZE;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)DMA_RX_Buffer;
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+
+
+
+
+	DMA_Init(DMA1_Channel1, DMA_InitStructure);
+
+	DMA_Cmd(DMA1_Channel1, ENABLE);
+*/
 	USART_Cmd(USART1,ENABLE);
 }
 
@@ -161,7 +190,7 @@ void USART2_DeInit()
   * @param  None
   * @retval None
   */
-void USART1_EnableRxInterrupt()
+void USART1_EnableRxInterrupt(void)
 {
 //	NVIC_InitTypeDef NVIC_InitStruct;
 
@@ -173,6 +202,22 @@ void USART1_EnableRxInterrupt()
 	NVIC_EnableIRQ(USART1_IRQn);
 //	NVIC_Init(&NVIC_InitStruct);
 }
+
+
+void USART1_EnableTxInterrupt(void)
+{
+//	NVIC_InitTypeDef NVIC_InitStruct;
+
+	USART_ITConfig(USART1, USART_IT_TXE, ENABLE); //enable the USART1 receive interrupt
+
+//	NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
+//	NVIC_InitStruct.NVIC_IRQChannelPriority = 0;
+//	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_EnableIRQ(USART1_IRQn);
+//	NVIC_Init(&NVIC_InitStruct);
+}
+
+
 
 
 void USART2_EnableRxInterrupt()

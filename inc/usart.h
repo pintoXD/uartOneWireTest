@@ -69,11 +69,13 @@ void USART1_IOConfig(void);
 void USART1_Init(uint32_t baudrate);
 void USART1_DeInit();
 void USART1_EnableRxInterrupt(void);
+void USART1_EnableTxInterrupt(void);
 
 void USART2_IOConfig(void);
 void USART2_Init(uint32_t baudrate);
 void USART2_DeInit();
 void USART2_EnableRxInterrupt(void);
+
 
 
 /* Data transmission functions ************************************************/

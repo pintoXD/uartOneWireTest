@@ -54,9 +54,9 @@ void InitializeTimer()
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
     TIM_TimeBaseInitTypeDef timerInitStructure;
-    timerInitStructure.TIM_Prescaler = 79;
+    timerInitStructure.TIM_Prescaler = 7;
     timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    timerInitStructure.TIM_Period = 500;
+    timerInitStructure.TIM_Period = 65535;
     timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
     timerInitStructure.TIM_RepetitionCounter = 0;
     TIM_TimeBaseInit(TIM3, &timerInitStructure);
@@ -105,57 +105,58 @@ int main(void)
 	brrValue = USART1->BRR;
 	USART2_DeInit();
 	USART1_EnableRxInterrupt();
+//	USART1_EnableTxInterrupt();
 
 	USART_ReceiveData(USART1);
 
- while(1)
- {
+	 while(1)
+	 {
 
 
-		USART1_PutByte(0xF0);
+			USART1_PutByte(0xF0);
 
 
 
-		 if(rcvAux == 0xE0){
-//			 USART2_PutString("Pegou ein!\r\n");
-//			 Delay(1);
-			 OW_WriteBytes();
-			 OW_ReadBytes();
+			 if(rcvAux == 0xE0){
+	//			 USART2_PutString("Pegou ein!\r\n");
+	//			 Delay(1);
+				 OW_WriteBytes();
+//				 delayMicroseconds(15);
+//				 OW_ReadBytes();
 
-		  if(rcvBuff[0] != 0){
-//			  USART2_PutString("Lai vai: \r\n");
-					for( int i = 0; i < size; i++){
+			  if(rcvBuff[0] != 0){
+	//			  USART2_PutString("Lai vai: \r\n");
+						for( int i = 0; i < size; i++){
 
-						USART2_PutByte(rcvBuff[i]);
-//						USART2_PutString(" ");
+							USART2_PutByte(rcvBuff[i]);
+	//						USART2_PutString(" ");
 
-						rcvBuff[i] = 0;
+							rcvBuff[i] = 0;
+						}
+
+
+
 					}
+			  USART_Cmd(USART1, DISABLE);
+			  USART1_Init(9600);
+	//		  brrValue = USART1->BRR;
+
+	//		  USART2_PutString("New BR 9600: ");
+	//		  USART2_PutByte(USART1->BRR);
+
+			 }
 
 
 
-				}
-		  USART_Cmd(USART1, DISABLE);
-		  USART1_Init(9600);
-//		  brrValue = USART1->BRR;
+	//		if(rcvAux == 0xE0)
+	//			USART2_PutString("MAH OE\r\n");
 
-//		  USART2_PutString("New BR 9600: ");
-//		  USART2_PutByte(USART1->BRR);
-
-		 }
-
-//		 Delay(250);
-
-//		if(rcvAux == 0xE0)
-//			USART2_PutString("MAH OE\r\n");
-
-	}
+		}
 }
 
 
 
 void delayMicroseconds(uint32_t value){
-	value = value/10;
 	TIM3->CNT = 0;
 	while(TIM3->CNT < value);
 
@@ -171,6 +172,13 @@ void OW_WriteBytes(void){
     uint8_t byte = 0x33;
     uint8_t count;
     flagWrite = 1;
+//    uint8_t bit, byte;
+    flagWrite = 0;
+    uint8_t masterPattern = 0xFF;
+    uint8_t newByte;
+//    uint8_t count;
+
+
     USART_Cmd(USART1, DISABLE);
     USART1_Init(115200);
     brrValue2 = USART1->BRR;//Troca de BR, porque é o pedido pelo iButton para leitura
@@ -195,21 +203,71 @@ void OW_WriteBytes(void){
 	    byte >>= 1;
 
 //	    for(count = 0; count < 250; count++);
-	    delayMicroseconds(60);
+//	    delayMicroseconds(15);
 
 //	    Delay(1);
 	 }
 
-//		USART2_PutString("Saiu do FOR");
 
-//	 // Since TX and RX are shorted, we must flush our output from the inbuffer
-//	 // where it will have been received. We read our own writes.
-//	 while(1)
-//	 {
-//	    i = read(fd,inBuf,64);
-//	    if(i<=0)
-//	       break;
-//	 }
+
+
+
+
+	for(byte = 0; byte < size; byte++){//Lê os 8 bytes do endereço
+
+	             newByte = 0;
+
+	                for(bit = 0; bit < 8; bit++){//Lê bit a bit de cada byte
+
+	                        newByte >>= 1;
+	                        rcvAux = 0;
+	                        USART1_PutByte(masterPattern);
+
+	//                        rcvAux = USART_ReceiveData(USART1);
+
+
+	                   /*    if(i <= 0 ){
+
+	                                // printf("End read\n");
+	                                return byte;
+	                        }
+	                   */
+
+	                        if(rcvAux == 0xFF){
+	                        	/*Problema aqui. iButton sempre tá mandando um FF*/
+	//                        	USART2_PutString("Entrou no IF");
+	                        	//Pego só o 0xFF porque os demais valores represnetam um bit 0 na leitura
+	                        	//POdem, assim, ser descartados
+
+	                             newByte |= 0x80; //Configura o MSB do byte;
+	                        }
+
+	//                        else{
+	//                        	USART2_PutString("Diff");
+	//                        }
+
+
+//	                        delayMicroseconds(12);
+
+	//                        Delay(1);
+
+
+	                 }
+
+	//                if(newByte == 0xFE){
+	//                	newByte = 0;
+	//                	byte  = 0;
+	//                }
+	//
+	//                else
+	                	rcvBuff[byte] = newByte;
+//	                delayMicroseconds(15);
+
+	        }
+
+
+
+
 
 
 }
@@ -231,14 +289,7 @@ void OW_ReadBytes(void){
 
 
 
-//    USART2_PutString("Entrou ein\r\n");
-//    USART_Cmd(USART1, DISABLE);
-//    USART1_Init(115200);//Troca de BR, porque é o pedido pelo iButton para leitura
-//    brrValue2 = USART1->BRR;
-//	USART2_PutString("New BR 115200: ");
-//    USART2_PutByte(USART1->BRR);
-//    Delay(1);
-//	brrValue2 = USART1->BRR;
+
      for(byte = 0; byte < size; byte++){//Lê os 8 bytes do endereço
 
              newByte = 0;
@@ -268,17 +319,27 @@ void OW_ReadBytes(void){
                              newByte |= 0x80; //Configura o MSB do byte;
                         }
 
+//                        else{
+//                        	USART2_PutString("Diff");
+//                        }
 
-//                        delayMicroseconds(120);
+
+                        delayMicroseconds(12);
 
 //                        Delay(1);
 
 
                  }
 
-                rcvBuff[byte] = newByte;
-
-                delayMicroseconds(60);
+//                if(newByte == 0xFE){
+//                	newByte = 0;
+//                	byte  = 0;
+//                }
+//
+//                else
+                	rcvBuff[byte] = newByte;
+                delayMicroseconds(15);
+//                delayMicroseconds(60);
                 //                for(count = 0; count <= 42; count++){
 //                                      }
 //                 for(count = 0; count <= 1; count++){
@@ -308,7 +369,13 @@ void USART1_IRQHandler(void){
 //	USART2_PutString("OE:\r\n");
 //	USART2_PutString((char) USART_IT_RXNE);
 
-
+//	if(USART_GetITStatus(USART1, USART_IT_TXE) == SET){
+////		for(uint8_t count = 0; count < 1; count++);
+////		USART2_PutString("TC");
+//		delayMicroseconds(10);
+//		rcvAux = USART_ReceiveData(USART1);
+//
+//	}
 
 
 	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
@@ -326,13 +393,19 @@ void USART1_IRQHandler(void){
 //				   	rcvAux = USART_ReceiveData(USART1);
 
 
-					if(flagWrite == 0){
-						delayMicroseconds(10);
-					}
+//					if(flagWrite == 0){
+//						delayMicroseconds(15);
+//					}
 
+
+//					uint16_t rcvAuxTeste = USART_ReceiveData(USART1);
+//					delayMicroseconds(15);
+					rcvAux = 0;
+//					if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
+//						USART2_PutString("OPA!");
 
 					rcvAux = USART_ReceiveData(USART1);
-
+//					rcvAux = rcvAux ^ 1;
 
 //					if(flagWrite == 0){
 //						USART2_PutByte(rcvAux);
@@ -347,7 +420,7 @@ void USART1_IRQHandler(void){
 
 
 	if(USART_GetFlagStatus(USART1, USART_IT_ORE) == SET){
-//		USART2_PutString("FUDEU");
+//		USART2_PutString("ORE");
 	}
 
 }
